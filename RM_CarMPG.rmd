@@ -1,0 +1,122 @@
+---
+output: html_document
+---
+##What impacts the fuel efficiency of a car?
+
+###Regression Models Course Project
+* author: Megan Minshew
+* date: Tuesday, August 18, 2014
+
+###Executive Summary
+Data for this study comes from 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles. This study will assess the impact of various attributes and combinations of attributes on the overall measured vehicle mileage efficiency. The findings of this study are indicators of opportunities to change vehicle components and composition in order to affect fuel efficiency.
+
+###Exploratory Analysis
+The data provided contains the following measures and attributes:
+1. Miles/(US) gallon
+2. Number of cylinders
+3. Displacement (cu.in.)
+4. Gross horsepower
+5. Rear axle ratio
+6. Weight (lb/1000)
+7. 1/4 mile time
+8. V/S
+9. Transmission (0 = automatic, 1 = manual)
+10. Number of forward gears
+11. Number of carburetors
+
+Data is loaded and summarized by candidate attributes. 
+Data cleanup and transformation needed is limited to factorizing non-measures.
+
+Attention for this study on type of transmission has been specifically identified as an area of interest. Analysis will highlight this component. 
+
+```{r message=FALSE}
+#using libraries:
+library("datasets"); library("MASS")
+
+#load the data and perform a basic survey
+data(mtcars)
+summary(mtcars)
+nrow(mtcars)
+by(mtcars$mpg, mtcars$am, summary)
+
+#factorize the appropriate variables (all non-measures)
+mtcars$am <- as.factor(mtcars$am)
+mtcars$cyl <- as.factor(mtcars$cyl)
+mtcars$gear <- as.factor(mtcars$gear)
+
+```
+
+##Regression Analysis
+
+###Single Variable
+To understand the relationship between mileage and transmission type, this study will use single variable regression.
+
+```{r}
+#build the linear model and summarize the coefficients
+lm_mpg_am <- lm(mtcars$mpg ~ mtcars$am)
+summary(lm_mpg_am)$coefficients
+```
+The model indicates that a vehicle with manual transmission should operate at 7.2 miles per gallon more efficient than a vehicle with automatic transmission. This model is based on a relatively small sampling of data. The t value and residual variation indicate that this model is a poor fit. 
+
+Plots of these findings and subsequent results are available in the appendix. 
+
+###Multiple Variable
+The relationship between mileage and all candidate variables will be evaluated through fitting a generalized linear model. 
+
+The glm is fit with the primary variables and dimensions or factors are fed to the model to generate dummy variables. The product of this is evaluated using a stepwise method to consider alternate multi-variate regression models to produce better candidates. 
+
+```{r}
+#Build the glm and fit stepwise
+glm_mpg <- glm(mpg ~ am + cyl + gear + disp + hp + drat + wt, data = mtcars)
+fit <- stepAIC(glm_mpg, direction = 'both')
+fit$anova
+```
+
+A model based on transmission type combined with the engine cylinder composition, the horsepower and vehicle weight is indicated as the best model by performing an ANOVA test on the stepwise fit algorithm.
+
+This research proceeds with this model as the best choice and displays the model coefficients and residuals.
+
+```{r}
+#build the final model and summarize
+m <- glm(mpg ~ am + cyl + hp + wt, data = mtcars)
+summary(m)$coefficients
+summary(m$residuals)
+```
+
+###Summary
+The results of the model suggest a much lower relationship, with a manual transmission attributable to a 1.8 mile per gallon lift when controlled for key corroborating factors. However, the high p-value of 0.21 for the transmission factor means that there is a relatively low probability that the relationship observed in this data is significant.
+
+More significant factors are found among the engine size, horsepower, and the weight of the car. Also noted is the significant factor that a 6 cylinder engine versus a 4 cylinder engine estimates a reduction of mpg by 3.0 miles per gallon.
+
+Support for the incorporation of additional variables into the model to yield a better prediction is appended as figures at the bottom of the document.
+
+A major factor to explain the statistical signifigance of this study is the high ratio of the total number of available variables (11) to the number of observations (32). 
+
+
+###Appendix
+Figure 1: Single Variable Regression Plot and Residuals
+```{r}
+par(mfrow = c(1,2))
+plot(mtcars$am, mtcars$mpg, main = 'Mileage and Transmission')
+abline(lm_mpg_am)
+plot(mtcars$am, resid(lm_mpg_am), main = 'Single Variable Residuals')
+abline(h = 0)
+```
+
+Figure 2: Single Variable Regression - Full Model Fit
+```{r}
+layout(matrix(c(1,2,3,4),2,2))
+plot(lm_mpg_am)
+```
+
+Figure 3: Pairs plot for all features and measures
+```{r}
+attr <- c('mpg','cyl','disp','hp','wt','gear','carb')
+pairs(x = mtcars[,attr], panel = panel.smooth, main = 'Pairs Plot -- MTCars')
+```
+
+Figure 4: Final Regression Model
+```{r}
+layout(matrix(c(1,2,3,4),2,2))
+plot(m)
+```
